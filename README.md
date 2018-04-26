@@ -19,20 +19,26 @@ SerializableNode.set(StorageProtocol.config, StorageProtocol.configKeys.root.loc
 
 ### Supported protocol
 
-* ```local```
-*  ```cache```
+* ```local``` for access localStorage.
+*  ```cache``` for access memory cache.
 
-### Parameters
+### Request parameters
 
 No parameter.
 
 ### Supported mode
 
-* √ Asynchronized request
-* √ Synchronized request
-* √ Request data
-* √ Submit data
-* √ Delete data
+| Protocol | Asynchronized | Synchronized | Request | Submit | Delete |
+|-|:-:|:-:|:-:|:-:|:-:|
+| local | √ | √ | √ | √ | √ |
+| cache | √ | √ | √ | √ | √ |
+
+### Injectors
+
+| Timepoint | Data structure | Data description | Request method |
+|-|:-|:-|:-|
+| BeforeSend | ```SerializableNode<any>``` | Storage node | Request/Submit/Delete |
+| AfterSent | ```SerializableNode<any>``` | Storage node | Request/Submit/Delete |
 
 ### Example
 

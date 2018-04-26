@@ -3,8 +3,6 @@ import { SerializableNode, autoname, toPascalCase } from '@dlcs/tools';
 import { Observable } from 'rxjs/Observable';
 import { of } from 'rxjs/observable/of';
 
-import { StorageType } from './StorageType';
-
 /**
  * Configuration keys for StorageProtocol
  */
@@ -28,7 +26,7 @@ export interface StorageProtocolConfigKeys {
 
 export class StorageProtocol extends ResourceProtocol {
     private memoryStorage: SerializableNode;
-    private static _config: SerializableNode = SerializableNode.create('resource_manager', undefined);
+    private static _config: SerializableNode = SerializableNode.create('StorageProtocol', undefined);
     private static _configKeys: StorageProtocolConfigKeys = { root: { cache: '', local: '' } };
 
     public static initialize(): void {
@@ -64,11 +62,7 @@ export class StorageProtocol extends ResourceProtocol {
         injector && (node = injector(node, InjectorTimepoint.BeforeSend));
         if (request.type === RequestType.Request) {
             injector && (node = injector(node, InjectorTimepoint.AfterSent));
-            return {
-                key: request.address,
-                value: this.findNode(request.address, root).value,
-                type: request.protocol === 'local' ? StorageType.Local : StorageType.Cache
-            };
+            return this.findNode(request.address, root).value;
         } else {
             if (request.type === RequestType.Submit) {
                 node.value = request.content;
