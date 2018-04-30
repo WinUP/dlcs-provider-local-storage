@@ -12,34 +12,24 @@ export interface StorageProtocolConfigKeys {
      */
     root: {
         /**
-         * Memory cache root name
-         * @default 'ROOT'
-         */
-        cache: string,
-        /**
          * LocalStorage root name
          * @default 'DLCS'
          */
-        local: string
+        name: string
     };
 }
 
 export class StorageProtocol extends ResourceProtocol {
-    private memoryStorage: SerializableNode;
     private static _config: SerializableNode = SerializableNode.create('StorageProtocol', undefined);
-    private static _configKeys: StorageProtocolConfigKeys = { root: { cache: '', local: '' } };
+    private static _configKeys: StorageProtocolConfigKeys = { root: { name: '' } };
 
     public static initialize(): void {
         autoname(StorageProtocol._configKeys, '/', toPascalCase);
-        SerializableNode.set(StorageProtocol.config, StorageProtocol.configKeys.root.cache, 'ROOT');
-        SerializableNode.set(StorageProtocol.config, StorageProtocol.configKeys.root.local, 'DLCS');
+        SerializableNode.set(StorageProtocol.config, StorageProtocol.configKeys.root.name, 'DLCS');
     }
 
     public constructor() {
-        super('local', 'cache');
-        this.memoryStorage = SerializableNode.create(
-            SerializableNode.get<string>(StorageProtocol.config, StorageProtocol.configKeys.root.cache)
-        , undefined);
+        super('local');
     }
 
     /**
@@ -57,7 +47,7 @@ export class StorageProtocol extends ResourceProtocol {
     }
 
     public requestSync(request: ResourceRequest, injector?: (data: any, timepoint: InjectorTimepoint) => any): any {
-        const root: SerializableNode = this.findRoot(request);
+        const root: SerializableNode = this.readStorageRoot();
         let node = this.findNode(request.address, root);
         injector && (node = injector(node, InjectorTimepoint.BeforeSend));
         if (request.type === RequestType.Request) {
@@ -69,9 +59,7 @@ export class StorageProtocol extends ResourceProtocol {
             } else {
                 this.removeNode(node, root);
             }
-            if (root !== this.memoryStorage) {
-                this.saveStorageRoot(root);
-            }
+            this.saveStorageRoot(root);
             injector && (node = injector(node, InjectorTimepoint.AfterSent));
             return node.value;
         }
@@ -89,10 +77,6 @@ export class StorageProtocol extends ResourceProtocol {
                 this.removeNode(node, parent);
             });
         }
-    }
-
-    private findRoot(request: ResourceRequest): SerializableNode {
-        return request.protocol === 'local' ? this.readStorageRoot() : this.memoryStorage;
     }
 
     private findNode(key: string, root: SerializableNode): SerializableNode {
@@ -113,7 +97,7 @@ export class StorageProtocol extends ResourceProtocol {
         if (!window.localStorage) {
             throw new TypeError(`Cannot create storage root: Running environment does not support localStorage.`);
         }
-        const rootName = SerializableNode.get<string>(StorageProtocol.config, StorageProtocol.configKeys.root.cache);
+        const rootName = SerializableNode.get<string>(StorageProtocol.config, StorageProtocol.configKeys.root.name);
         const localData = window.localStorage.getItem(rootName);
         let storage: SerializableNode;
         if (localData == null) {
@@ -129,7 +113,7 @@ export class StorageProtocol extends ResourceProtocol {
             throw new TypeError(`Cannot create storage root: Running environment does not support localStorage.`);
         }
         window.localStorage.setItem(
-            SerializableNode.get<string>(StorageProtocol.config, StorageProtocol.configKeys.root.cache)
+            SerializableNode.get<string>(StorageProtocol.config, StorageProtocol.configKeys.root.name)
         , JSON.stringify(root));
     }
 }
