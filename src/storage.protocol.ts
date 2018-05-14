@@ -1,49 +1,17 @@
 import { ResourceProtocol, ResourceRequest, InjectorTimepoint, RequestType } from '@dlcs/core';
 import { SerializableNode, autoname, toPascalCase } from '@dlcs/tools';
-import { Observable } from 'rxjs/Observable';
-import { of } from 'rxjs/observable/of';
-
-/**
- * Configuration keys for StorageProtocol
- */
-export interface StorageProtocolConfigKeys {
-    /**
-     * Storage root name configuration
-     */
-    root: {
-        /**
-         * LocalStorage root name
-         * @default 'DLCS'
-         */
-        name: string
-    };
-}
+import { Observable, of } from 'rxjs';
 
 export class StorageProtocol extends ResourceProtocol {
-    private static _config: SerializableNode = SerializableNode.create('StorageProtocol', undefined);
-    private static _configKeys: StorageProtocolConfigKeys = { root: { name: '' } };
+    private rootName: string;
 
-    public static initialize(): void {
-        autoname(StorageProtocol._configKeys, '/', toPascalCase);
-        SerializableNode.set(StorageProtocol.config, StorageProtocol.configKeys.root.name, 'DLCS');
-    }
-
-    public constructor() {
+    /**
+     * Create a new StorageProtocol
+     * @param root Root name in localStorage
+     */
+    public constructor(root: string = 'DLCS') {
         super('local');
-    }
-
-    /**
-     * Get configuration
-     */
-    public static get config(): SerializableNode {
-        return StorageProtocol._config;
-    }
-
-    /**
-     * Get configuration keys
-     */
-    public static get configKeys(): Readonly<StorageProtocolConfigKeys> {
-        return StorageProtocol._configKeys;
+        this.rootName = root;
     }
 
     public requestSync(request: ResourceRequest, injector?: (data: any, timepoint: InjectorTimepoint) => any): any {
@@ -70,52 +38,31 @@ export class StorageProtocol extends ResourceProtocol {
     }
 
     private removeNode(node: SerializableNode, root: SerializableNode): void {
-        if (root.children.indexOf(node) > -1) {
-            root.children.splice(root.children.indexOf(node), 1);
-        } else {
-            root.children.forEach(parent => {
-                this.removeNode(node, parent);
-            });
-        }
+        root.drop(node);
     }
 
     private findNode(key: string, root: SerializableNode): SerializableNode {
-        const hierarchy = key.split('/').slice(1);
-        let pointer: SerializableNode = root;
-        hierarchy.forEach(itemKey => {
-            let child = pointer.children.find(v => v.key === itemKey);
-            if (!child) {
-                child = SerializableNode.create(itemKey, undefined);
-                pointer.children.push(child);
-            }
-            pointer = child;
-        });
-        return pointer;
+        return root.find(key);
     }
 
     private readStorageRoot(): SerializableNode {
-        if (!window.localStorage) {
+        if (!localStorage) {
             throw new TypeError(`Cannot create storage root: Running environment does not support localStorage.`);
         }
-        const rootName = SerializableNode.get<string>(StorageProtocol.config, StorageProtocol.configKeys.root.name);
-        const localData = window.localStorage.getItem(rootName);
+        const localData = localStorage.getItem(this.rootName);
         let storage: SerializableNode;
         if (localData == null) {
-            storage = SerializableNode.create(rootName, undefined);
+            storage = new SerializableNode(this.rootName, undefined);
         } else {
-            storage = JSON.parse(localData);
+            storage = SerializableNode.deserialize(JSON.parse(localData));
         }
         return storage;
     }
 
     private saveStorageRoot(root: SerializableNode): void {
-        if (!window.localStorage) {
+        if (!localStorage) {
             throw new TypeError(`Cannot create storage root: Running environment does not support localStorage.`);
         }
-        window.localStorage.setItem(
-            SerializableNode.get<string>(StorageProtocol.config, StorageProtocol.configKeys.root.name)
-        , JSON.stringify(root));
+        localStorage.setItem(this.rootName, JSON.stringify(root.serialize()));
     }
 }
-
-StorageProtocol.initialize();
